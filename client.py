@@ -1,13 +1,14 @@
 # due to some stupid issues with the path of tcl/tk
-import os
-os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
-os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
+# import os
+# os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
+# os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
 
 
 import re
 import socket
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import font
 
 from utils import colors
 
@@ -38,7 +39,7 @@ class WordleClient:
         self.label = tk.Label(master, text="History Answer:")
         self.label.pack(pady=10)
 
-        self.output_text = tk.Text(master, width=60, height=15, state=tk.DISABLED)
+        self.output_text = tk.Text(master, width=60, height=15, state=tk.DISABLED, bg="darkgrey", font=("Courier New", 40, font.BOLD), justify="center")
         self.output_text.pack(pady=10)
 
         # 連接到伺服器
