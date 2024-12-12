@@ -10,38 +10,53 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import font
 
-from utils import colors
 
 class WordleClient:
     def __init__(self, master):
         self.master = master
         self.master.title("Wordle Game Client")
-        self.master.geometry("800x600")
+        self.master.geometry("1200x900")
 
         self.server = None
+        self.count = 0 # 計數
 
-        # 建立 UI 元素
-        self.label = tk.Label(master, text="Enter your guess:")
-        self.label.pack(pady=10)
+        # 使用一個 Frame 放置非網格部分
+        top_frame = tk.Frame(master)
+        top_frame.pack(side=tk.TOP, fill=tk.X)
 
-        self.guess_entry = tk.Entry(master, width=20)
+        self.label = tk.Label(top_frame, text="Enter your guess:")
+        self.label.pack(pady=5)
+
+        self.guess_entry = tk.Entry(top_frame, width=20)
         self.guess_entry.pack(pady=10)
 
-        self.send_button = tk.Button(master, text="Send Guess", command=self.send_guess)
-        self.send_button.pack(pady=10)
+        self.send_button = tk.Button(top_frame, text="Send Guess", command=self.send_guess)
+        self.send_button.pack(pady=5)
 
-        self.label = tk.Label(master, text="System Message:")
-        self.label.pack(pady=10)
+        self.sys_label = tk.Label(top_frame, text="System Message:")
+        self.sys_label.pack(pady=10)
 
-        self.sys_text = tk.Text(master, width=60, height=5, state=tk.DISABLED)
+        self.sys_text = tk.Text(top_frame, width=60, height=5, state=tk.DISABLED)
         self.sys_text.pack(pady=10)
 
-        self.label = tk.Label(master, text="History Answer:")
-        self.label.pack(pady=10)
+        self.history_label = tk.Label(top_frame, text="History Answer:")
+        self.history_label.pack(pady=10)
 
-        self.output_text = tk.Text(master, width=60, height=15, state=tk.DISABLED, bg="darkgrey", font=("Courier New", 40, font.BOLD), justify="center")
-        self.output_text.pack(pady=10)
+        # 使用另一個 Frame 放置網格部分
+        grid_frame = tk.Frame(master)
+        grid_frame.pack(side=tk.TOP, pady=10)
 
+        # 創建 6x5 的網格
+        self.texts = {}
+        for row in range(6):  # 6 行
+            for col in range(5):  # 每行 5 個
+                text_widget = tk.Label(grid_frame, text=" ", width=3, height=2, bg="white", font=("Courier New", 18, font.BOLD), relief="solid")
+                text_widget.grid(row=row, column=col, padx=5, pady=5)
+                self.texts[f"text_{row}_{col}"] = text_widget
+                
+        # self.output_text = tk.Text(master, width=60, height=15, state=tk.DISABLED, bg="darkgrey", font=("Courier New", 18, font.BOLD))
+        # self.output_text.pack(pady=10)
+        
         # 連接到伺服器
         self.connect_to_server()
 
@@ -95,34 +110,22 @@ class WordleClient:
         self.sys_text.config(state=tk.DISABLED)
 
     def display_message(self, message):
-        ansi_to_tag = {
-            colors.GREEN: "green",
-            colors.YELLOW: "yellow",
-            colors.BLACK: "black",
-        }
+        message = message.split("<RESET>")[0:5]
+        for i in range(5):
+            content = message[i]
+            color, char = content.split(">")
+            if color == "<GREEN":
+                self.texts[f"text_{self.count}_{i}"].config(text = char, bg="green")
+            elif color == "<YELLOW":
+                self.texts[f"text_{self.count}_{i}"].config(text = char, bg="yellow")
+            elif color == "<BLACK":
+                self.texts[f"text_{self.count}_{i}"].config(text = char)
+        self.count += 1
 
-        # 配置樣式
-        for ansi, tag in ansi_to_tag.items():
-            self.output_text.tag_configure(tag, foreground=tag)
-
-        # 解析並插入顏色文本
-        self.output_text.config(state=tk.NORMAL)
-
-        # 正則表達式匹配 ANSI 顏色碼
-        ansi_pattern = re.compile(r"(\033\[[0-9;]+m)")
-        parts = ansi_pattern.split(message)  # 分割文本和顏色碼
-
-        current_tag = None
-        for part in parts:
-            if part in ansi_to_tag:  # 如果是 ANSI 顏色碼
-                current_tag = ansi_to_tag[part]
-            elif part == colors.RESET:  # 如果是重置碼
-                current_tag = None
-            else:  # 插入普通文本
-                self.output_text.insert("end", part, current_tag)
-
-        self.output_text.see(tk.END)
-        self.output_text.config(state=tk.DISABLED)
+        if self.count == 6: 
+            self.display_message_sys("Game Over. Please restart the game.")
+            self.server.close()
+            return
 
 # 啟動 GUI
 if __name__ == "__main__":

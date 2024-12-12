@@ -4,10 +4,9 @@ import random
 import signal
 import sys
 
-from utils import colors
 
 # 一些範例單字
-WORDS = ["apple", "grape", "peach", "berry", "mango", "lemon"]
+WORDS = []
 
 # 用於伺服器運行狀態的全域變數
 running = True
@@ -32,16 +31,21 @@ def handle_client(client_socket, addr):
             if len(guess) != len(target_word):
                 client_socket.send(f"[SYS] Your guess must be {len(target_word)} characters long.\n".encode())
                 continue
-
+            if not guess.isalpha():
+                client_socket.send("[SYS] Your guess must contain only alphabetic characters.\n".encode())
+                continue
+            if guess not in WORDS:
+                client_socket.send("[SYS] Your guess is not a valid English word.\n".encode())
+                continue
             # 比對猜測
             response = []
             for i, char in enumerate(guess):
                 if char == target_word[i]:
-                    response.append(f"{colors.GREEN}{char}{colors.RESET}")  # Green: 正確字母與位置
+                    response.append(f"<GREEN>{char}<RESET>")  # Green: 正確字母與位置
                 elif char in target_word:
-                    response.append(f"{colors.YELLOW}{char}{colors.RESET}")  # Yellow: 正確字母但位置錯誤
+                    response.append(f"<YELLOW>{char}<RESET>")  # Yellow: 正確字母但位置錯誤
                 else:
-                    response.append(f"{colors.BLACK}{char}{colors.RESET}")  # Black: 錯誤字母
+                    response.append(f"<BLACK>{char}<RESET>")  # Black: 錯誤字母
 
             client_socket.send("".join(response).encode() + b"\n")
 
@@ -67,6 +71,9 @@ def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", 12345))
     server.listen()
+    with open("./utils/dictionary.txt", "r") as f:
+        global WORDS
+        WORDS = f.read().splitlines()
     print("[SERVER] Server is listening on port 12345...")
     
     # 註冊信號處理
@@ -90,5 +97,5 @@ def start_server():
 
 
 if __name__ == "__main__":
-    print(f'{colors.GREEN}Server is starting...{colors.RESET}')
+    print(f'Server is starting...')
     start_server()
