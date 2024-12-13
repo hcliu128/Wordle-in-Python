@@ -26,7 +26,7 @@ This project is a simple server implementation of the popular word-guessing game
 
 2. **Start the Client**: Run the client script
     ```bash
-   python server.py
+   python client.py
    ```
 
 3. **Play!!!**
