@@ -9,56 +9,73 @@ except Exception as e:
     os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
     os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
 
-
 import socket
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import font
+from tkinter import messagebox, font
 
 
 class WordleClient:
     def __init__(self, master):
         self.master = master
         self.master.title("Wordle Game Client")
-        self.master.geometry("1200x900")
+        self.master.geometry("1000x900")
+        self.master.configure(bg="#f0f0f0")  # 背景顏色
 
         self.server = None
-        self.count = 0 # 計數
+        self.count = 0  # 計數
 
-        # 使用一個 Frame 放置非網格部分
-        top_frame = tk.Frame(master)
-        top_frame.pack(side=tk.TOP, fill=tk.X)
+        # 字體樣式
+        self.label_font = ("Courier New", 14, "bold")
+        self.button_font = ("Helvetica", 12)
 
-        self.label = tk.Label(top_frame, text="Enter your guess:")
-        self.label.pack(pady=5)
+        # 創建頂部區域框架
+        top_frame = tk.Frame(master, bg="#f0f0f0")
+        top_frame.pack(side=tk.TOP, fill=tk.X, pady=10)
 
-        self.guess_entry = tk.Entry(top_frame, width=20)
-        self.guess_entry.pack(pady=10)
+        # 輸入框和按鈕
+        self.label = tk.Label(top_frame, text="Enter your guess:", font=self.label_font, bg="#f0f0f0")
+        self.label.grid(row=0, column=0, padx=30, pady=5, sticky="w")
 
-        self.send_button = tk.Button(top_frame, text="Send Guess", command=self.send_guess)
-        self.send_button.pack(pady=5)
+        self.guess_entry = tk.Entry(top_frame, width=20, font=("Courier New", 14))
+        self.guess_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        self.sys_label = tk.Label(top_frame, text="System Message:")
+        self.send_button = tk.Button(top_frame, text="Send Guess", font=self.button_font, command=self.send_guess, bg="#87CEEB", fg="white")
+        self.send_button.grid(row=0, column=2, padx=10, pady=5)
+
+        self.help_button = tk.Button(top_frame, text="HELP", font=self.button_font, command=self.show_help, bg="#FFA07A", fg="white")
+        self.help_button.grid(row=0, column=3, padx=10, pady=5)
+
+        # 系統消息
+        self.sys_label = tk.Label(master, text="System Message:", font=self.label_font, bg="#f0f0f0")
         self.sys_label.pack(pady=10)
 
-        self.sys_text = tk.Text(top_frame, width=60, height=5, state=tk.DISABLED)
-        self.sys_text.pack(pady=10)
+        self.sys_text = tk.Text(master, width=70, height=5, state=tk.DISABLED, bg="lightgrey", font=("Courier New", 12))
+        self.sys_text.pack(pady=5)
 
-        self.history_label = tk.Label(top_frame, text="History Answer:")
+        # 歷史答案標題
+        self.history_label = tk.Label(master, text="Guess History:", font=self.label_font, bg="#f0f0f0")
         self.history_label.pack(pady=10)
 
-        # 使用另一個 Frame 放置網格部分
-        grid_frame = tk.Frame(master)
-        grid_frame.pack(side=tk.TOP, pady=10)
+        # 創建網格框架
+        grid_frame = tk.Frame(master, bg="#f0f0f0")
+        grid_frame.pack(pady=10)
 
-        # 創建 6x5 的網格
+        # 6x5 的網格
         self.texts = {}
-        for row in range(6):  # 6 行
-            for col in range(5):  # 每行 5 個
-                text_widget = tk.Label(grid_frame, text=" ", width=3, height=2, bg="white", font=("Courier New", 18, font.BOLD), relief="solid")
+        for row in range(6):
+            for col in range(5):
+                text_widget = tk.Label(
+                    grid_frame,
+                    text=" ",
+                    width=4,
+                    height=2,
+                    bg="white",
+                    font=("Courier New", 24, font.BOLD),
+                    relief="solid",
+                )
                 text_widget.grid(row=row, column=col, padx=5, pady=5)
                 self.texts[f"text_{row}_{col}"] = text_widget
-        
+
         # 連接到伺服器
         self.connect_to_server()
 
@@ -67,9 +84,7 @@ class WordleClient:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.connect(("127.0.0.1", 12345))  # 替換為伺服器地址和端口
             self.display_message_sys("Connected to the server.")
-
-            # 啟動接收伺服器消息的循環
-            self.master.after(100, self.receive_messages)
+            self.master.after(100, self.receive_messages)  # 啟動接收循環
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect to server: {e}")
             self.master.quit()
@@ -92,18 +107,14 @@ class WordleClient:
             data = self.server.recv(1024).decode()
             if data and "[SYS]" in data:
                 self.display_message_sys(data.split("[SYS] ")[1])
-            if data and "[SYS]" not in data:
+            elif data:
                 self.display_message(data)
-                # 如果遊戲結束，關閉連接
                 if "Congratulations" in data or "disconnected" in data:
                     self.server.close()
                     return
         except:
-            pass  # 沒有消息時忽略
-
-        # 繼續檢查新消息
+            pass
         self.master.after(100, self.receive_messages)
-
 
     def display_message_sys(self, message):
         self.sys_text.config(state=tk.NORMAL)
@@ -117,14 +128,14 @@ class WordleClient:
             content = message[i]
             color, char = content.split(">")
             if color == "<GREEN":
-                self.texts[f"text_{self.count}_{i}"].config(text = char, bg="green")
+                self.texts[f"text_{self.count}_{i}"].config(text=char, bg="green")
             elif color == "<YELLOW":
-                self.texts[f"text_{self.count}_{i}"].config(text = char, bg="yellow")
+                self.texts[f"text_{self.count}_{i}"].config(text=char, bg="yellow")
             elif color == "<BLACK":
-                self.texts[f"text_{self.count}_{i}"].config(text = char)
+                self.texts[f"text_{self.count}_{i}"].config(text=char)
         self.count += 1
 
-        if self.count == 6: 
+        if self.count == 6:
             self.server.send("[GameOver]".encode())
             play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
             if play_again:
@@ -143,7 +154,16 @@ class WordleClient:
         self.sys_text.config(state=tk.DISABLED)
         self.connect_to_server()
 
-# 啟動 GUI
+    def show_help(self):
+        messagebox.showinfo("How to Play", "1. Enter a valid English word of the correct length.\n"
+                                           "2. Press 'Send Guess' to submit your guess.\n"
+                                           "3. Feedback will be provided:\n"
+                                           "   - Green: Correct letter and position.\n"
+                                           "   - Yellow: Correct letter but wrong position.\n"
+                                           "   - Black: Incorrect letter.\n"
+                                           "4. Continue guessing until you find the correct word or run out of attempts.")
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     client_app = WordleClient(root)
