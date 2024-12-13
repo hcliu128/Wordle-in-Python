@@ -28,6 +28,10 @@ def handle_client(client_socket, addr):
             if not guess:
                 break
 
+            if guess == "[GameOver]":
+                client_socket.send(f"[SYS] Game over! The correct word was: {target_word}\n".encode())
+                break
+
             if len(guess) != len(target_word):
                 client_socket.send(f"[SYS] Your guess must be {len(target_word)} characters long.\n".encode())
                 continue

@@ -1,10 +1,15 @@
 # due to some stupid issues with the path of tcl/tk
-# import os
-# os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
-# os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
+import os
+try: 
+    print(os.environ["TCL_LIBRARY"])
+    
+except Exception as e:
+    print(f"Error: {e}, we should manually link the library")
+
+    os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
+    os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
 
 
-import re
 import socket
 import tkinter as tk
 from tkinter import messagebox
@@ -53,9 +58,6 @@ class WordleClient:
                 text_widget = tk.Label(grid_frame, text=" ", width=3, height=2, bg="white", font=("Courier New", 18, font.BOLD), relief="solid")
                 text_widget.grid(row=row, column=col, padx=5, pady=5)
                 self.texts[f"text_{row}_{col}"] = text_widget
-                
-        # self.output_text = tk.Text(master, width=60, height=15, state=tk.DISABLED, bg="darkgrey", font=("Courier New", 18, font.BOLD))
-        # self.output_text.pack(pady=10)
         
         # 連接到伺服器
         self.connect_to_server()
@@ -123,9 +125,23 @@ class WordleClient:
         self.count += 1
 
         if self.count == 6: 
-            self.display_message_sys("Game Over. Please restart the game.")
-            self.server.close()
-            return
+            self.server.send("[GameOver]".encode())
+            play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
+            if play_again:
+                self.reset_game()
+            else:
+                self.server.close()
+                self.master.quit()
+
+    def reset_game(self):
+        self.count = 0
+        for row in range(6):
+            for col in range(5):
+                self.texts[f"text_{row}_{col}"].config(text=" ", bg="white")
+        self.sys_text.config(state=tk.NORMAL)
+        self.sys_text.delete(1.0, tk.END)
+        self.sys_text.config(state=tk.DISABLED)
+        self.connect_to_server()
 
 # 啟動 GUI
 if __name__ == "__main__":
