@@ -2,7 +2,7 @@ import socket
 import threading
 import random
 import signal
-import sys
+import time
 
 
 # 一些範例單字
@@ -52,10 +52,12 @@ def handle_client(client_socket, addr):
                     response.append(f"<BLACK>{char}<RESET>")  # Black: 錯誤字母
 
             client_socket.send("".join(response).encode() + b"\n")
+            time.sleep(0.5)
 
             # 檢查是否猜對
             if guess == target_word:
                 client_socket.send("[SYS] Congratulations! You guessed the word!\n".encode())
+                
                 break
         except:
             print(f"[ERROR] Connection with {addr} lost.")

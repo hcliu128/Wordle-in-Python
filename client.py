@@ -105,13 +105,23 @@ class WordleClient:
         try:
             self.server.setblocking(False)
             data = self.server.recv(1024).decode()
-            if data and "[SYS]" in data:
+            if data == "[SYS] Congratulations! You guessed the word!\n":
+                play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
+                if play_again:
+                    self.reset_game()
+                else:
+                    self.server.close()
+                    self.master.quit()
+                    
+            elif data and "[SYS]" in data:
                 self.display_message_sys(data.split("[SYS] ")[1])
+
             elif data:
                 self.display_message(data)
-                if "Congratulations" in data or "disconnected" in data:
+                if "disconnected" in data:
                     self.server.close()
                     return
+                    
         except:
             pass
         self.master.after(100, self.receive_messages)
