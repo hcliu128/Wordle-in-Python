@@ -1,17 +1,6 @@
-# due to some stupid issues with the path of tcl/tk
-import os
-try: 
-    print(os.environ["TCL_LIBRARY"])
-    
-except Exception as e:
-    print(f"Error: {e}, we should manually link the library")
-
-    os.environ["TCL_LIBRARY"] = "C:/Python313/tcl/tcl8.6"
-    os.environ["TK_LIBRARY"] = "C:/Python313/tcl/tk8.6"
-
-import socket
+import socket, time
 import tkinter as tk
-from tkinter import messagebox, font
+from tkinter import messagebox, font, simpledialog
 
 
 class WordleClient:
@@ -39,10 +28,10 @@ class WordleClient:
         self.guess_entry = tk.Entry(top_frame, width=20, font=("Courier New", 14))
         self.guess_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        self.send_button = tk.Button(top_frame, text="Send Guess", font=self.button_font, command=self.send_guess, bg="#87CEEB", fg="white")
+        self.send_button = tk.Button(top_frame, text="Send Guess", font=self.button_font, command=self.send_guess) # , bg="#87CEEB", fg="white"
         self.send_button.grid(row=0, column=2, padx=10, pady=5)
 
-        self.help_button = tk.Button(top_frame, text="HELP", font=self.button_font, command=self.show_help, bg="#FFA07A", fg="white")
+        self.help_button = tk.Button(top_frame, text="HELP", font=self.button_font, command=self.show_help) # , bg="#FFA07A", fg="white"
         self.help_button.grid(row=0, column=3, padx=10, pady=5)
 
         # 系統消息
@@ -77,14 +66,24 @@ class WordleClient:
                 self.texts[f"text_{row}_{col}"] = text_widget
 
         # 連接到伺服器
+        self.username = self.prompt_username()
+        self.online_label = tk.Label(top_frame, text="Online: 0", font=self.label_font, bg="#f0f0f0")
+        self.online_label.grid(row=0, column=4, padx=10, pady=5)
         self.connect_to_server()
 
+    def prompt_username(self):
+        username = None
+        while not username:
+            username = simpledialog.askstring("Username", "Enter your username:")
+        return username
+    
     def connect_to_server(self):
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.connect(("127.0.0.1", 12345))  # 替換為伺服器地址和端口
+            self.server.connect(("127.0.0.1", 12345))
+            self.server.send(self.username.encode())  # 傳送使用者名稱
             self.display_message_sys("Connected to the server.")
-            self.master.after(100, self.receive_messages)  # 啟動接收循環
+            self.master.after(100, self.receive_messages)
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect to server: {e}")
             self.master.quit()
@@ -105,7 +104,12 @@ class WordleClient:
         try:
             self.server.setblocking(False)
             data = self.server.recv(1024).decode()
-            if data == "[SYS] Congratulations! You guessed the word!\n":
+            if data.startswith("[SYS] Online:"):
+                # 更新在線人數
+                print(data)
+                online_count = data.split(": ")[1]
+                self.online_label.config(text=f"Online: {online_count}")
+            elif data == "[SYS] Congratulations! You guessed the word!\n":
                 play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
                 if play_again:
                     self.reset_game()
@@ -124,7 +128,7 @@ class WordleClient:
                     
         except:
             pass
-        self.master.after(100, self.receive_messages)
+        self.master.after(50, self.receive_messages)
 
     def display_message_sys(self, message):
         self.sys_text.config(state=tk.NORMAL)
@@ -133,6 +137,7 @@ class WordleClient:
         self.sys_text.config(state=tk.DISABLED)
 
     def display_message(self, message):
+        print(message)
         message = message.split("<RESET>")[0:5]
         for i in range(5):
             content = message[i]
@@ -143,9 +148,12 @@ class WordleClient:
                 self.texts[f"text_{self.count}_{i}"].config(text=char, bg="yellow")
             elif color == "<BLACK":
                 self.texts[f"text_{self.count}_{i}"].config(text=char)
+            # print(self.texts[f"text_{5}_{0}"].cget("text"))
         self.count += 1
-
+        
         if self.count == 6:
+            print("in")
+            time.sleep(0.3)
             self.server.send("[GameOver]".encode())
             play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
             if play_again:

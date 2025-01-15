@@ -4,34 +4,52 @@ import random
 import signal
 import time
 
-
 # 一些範例單字
 WORDS = []
 
 # 用於伺服器運行狀態的全域變數
 running = True
+clients = {}  # {client_socket: username}
+
+# 廣播訊息給所有客戶端
+def broadcast_message(message, exclude_socket=None):
+    print("broadcast_message:", message)
+    print("clients:", clients)
+    for client_socket in clients:
+        if client_socket != exclude_socket:
+            try:
+                client_socket.send(message.encode())
+            except:
+                client_socket.close()
+                del clients[client_socket]
+
+# 更新並廣播在線人數
+def update_online_count():
+    message = f"[SYS] Online: {len(clients)}"
+    broadcast_message(message)
+    time.sleep(0.5)
 
 # 處理每個客戶端的遊戲邏輯
 def handle_client(client_socket, addr):
-    print(f"[NEW CONNECTION] {addr} connected.")
-    
-    # 隨機選擇一個單字作為目標
-    target_word = random.choice(WORDS)
-    print(f"[GAME START] Target word for {addr} is: {target_word}")
-    
-    client_socket.send("[SYS] Welcome to Wordle!\nStart guessing:\n".encode())
-    
-    while True:
-        try:
-            # 接收客戶端猜測
+    global clients
+    try:
+        # 接收用戶名稱
+        username = client_socket.recv(1024).decode().strip()
+        clients[client_socket] = username
+        print(f"[NEW CONNECTION] {username} ({addr}) connected.")
+        update_online_count()
+        
+        # 遊戲邏輯
+        target_word = random.choice(WORDS)
+        print("Answer: " + target_word)
+        client_socket.send("[SYS] Welcome to Wordle!\nStart guessing:\n".encode())
+        while True:
             guess = client_socket.recv(1024).decode().strip()
             if not guess:
                 break
-
             if guess == "[GameOver]":
                 client_socket.send(f"[SYS] Game over! The correct word was: {target_word}\n".encode())
                 break
-
             if len(guess) != len(target_word):
                 client_socket.send(f"[SYS] Your guess must be {len(target_word)} characters long.\n".encode())
                 continue
@@ -41,7 +59,6 @@ def handle_client(client_socket, addr):
             if guess not in WORDS:
                 client_socket.send("[SYS] Your guess is not a valid English word.\n".encode())
                 continue
-            # 比對猜測
             response = []
             for i, char in enumerate(guess):
                 if char == target_word[i]:
@@ -53,24 +70,17 @@ def handle_client(client_socket, addr):
 
             client_socket.send("".join(response).encode() + b"\n")
             time.sleep(0.5)
-
-            # 檢查是否猜對
             if guess == target_word:
                 client_socket.send("[SYS] Congratulations! You guessed the word!\n".encode())
-                
+                broadcast_message(f"[SYS] {username} guessed the answer!", exclude_socket=client_socket)
                 break
-        except:
-            print(f"[ERROR] Connection with {addr} lost.")
-            break
-
-    print(f"[DISCONNECT] {addr} disconnected.")
-    client_socket.close()
-
-# 信號處理函數，處理 Ctrl+C 或 SIGINT 信號
-def shutdown_server(signum, frame):
-    global running
-    print("\n[SERVER] Shutdown signal received. Closing server...")
-    running = False
+    except:
+        print(f"[ERROR] Connection with {addr} lost.")
+    finally:
+        del clients[client_socket]
+        client_socket.close()
+        update_online_count()
+        print(f"[DISCONNECT] {addr} disconnected.")
 
 def start_server():
     global running
@@ -81,26 +91,22 @@ def start_server():
         global WORDS
         WORDS = f.read().splitlines()
     print("[SERVER] Server is listening on port 12345...")
-    
-    # 註冊信號處理
-    signal.signal(signal.SIGINT, shutdown_server)
 
+    signal.signal(signal.SIGINT, shutdown_server)
     while running:
         try:
-            # 設定 timeout 避免 accept 阻塞
             server.settimeout(1)
             client_socket, addr = server.accept()
-            thread = threading.Thread(target=handle_client, args=(client_socket, addr))
-            thread.start()
-            print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+            threading.Thread(target=handle_client, args=(client_socket, addr)).start()
         except socket.timeout:
-            continue  # 檢查是否收到關閉信號
-
+            continue
     server.close()
     print("[SERVER] Server has been shut down.")
 
-
-
+def shutdown_server(signum, frame):
+    global running
+    print("\n[SERVER] Shutdown signal received. Closing server...")
+    running = False
 
 if __name__ == "__main__":
     print(f'Server is starting...')
