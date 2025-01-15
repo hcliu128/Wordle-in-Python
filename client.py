@@ -28,10 +28,10 @@ class WordleClient:
         self.guess_entry = tk.Entry(top_frame, width=20, font=("Courier New", 14))
         self.guess_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        self.send_button = tk.Button(top_frame, text="Send Guess", font=self.button_font, command=self.send_guess) # , bg="#87CEEB", fg="white"
+        self.send_button = tk.Button(top_frame, text="Send Guess", font=self.button_font, command=self.send_guess, bg="#87CEEB", fg="white") # 
         self.send_button.grid(row=0, column=2, padx=10, pady=5)
 
-        self.help_button = tk.Button(top_frame, text="HELP", font=self.button_font, command=self.show_help) # , bg="#FFA07A", fg="white"
+        self.help_button = tk.Button(top_frame, text="HELP", font=self.button_font, command=self.show_help, bg="#FFA07A", fg="white") # 
         self.help_button.grid(row=0, column=3, padx=10, pady=5)
 
         # 系統消息
@@ -104,9 +104,16 @@ class WordleClient:
         try:
             self.server.setblocking(False)
             data = self.server.recv(1024).decode()
+            if "Game over! The correct word was:" in data:
+                self.display_message_sys(data.split("[SYS] ")[1])
+                play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
+                if play_again:
+                    self.reset_game()
+                else:
+                    self.server.close()
+                    self.master.quit()
             if data.startswith("[SYS] Online:"):
                 # 更新在線人數
-                print(data)
                 online_count = data.split(": ")[1]
                 self.online_label.config(text=f"Online: {online_count}")
             elif data == "[SYS] Congratulations! You guessed the word!\n":
@@ -137,7 +144,6 @@ class WordleClient:
         self.sys_text.config(state=tk.DISABLED)
 
     def display_message(self, message):
-        print(message)
         message = message.split("<RESET>")[0:5]
         for i in range(5):
             content = message[i]
@@ -148,19 +154,10 @@ class WordleClient:
                 self.texts[f"text_{self.count}_{i}"].config(text=char, bg="yellow")
             elif color == "<BLACK":
                 self.texts[f"text_{self.count}_{i}"].config(text=char)
-            # print(self.texts[f"text_{5}_{0}"].cget("text"))
         self.count += 1
         
         if self.count == 6:
-            print("in")
-            time.sleep(0.3)
             self.server.send("[GameOver]".encode())
-            play_again = messagebox.askyesno("Game Over", "Do you want to play again?")
-            if play_again:
-                self.reset_game()
-            else:
-                self.server.close()
-                self.master.quit()
 
     def reset_game(self):
         self.count = 0

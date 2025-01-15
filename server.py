@@ -13,8 +13,6 @@ clients = {}  # {client_socket: username}
 
 # 廣播訊息給所有客戶端
 def broadcast_message(message, exclude_socket=None):
-    print("broadcast_message:", message)
-    print("clients:", clients)
     for client_socket in clients:
         if client_socket != exclude_socket:
             try:
